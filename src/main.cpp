@@ -21,7 +21,7 @@ Zumo32U4IMU imu;
 int16_t maxX = -10000, maxY = 0, minX = 0, minY = 10000;
 
 // Function to convert magnetometer readings to degrees off North
-float calculateHeadingNew(float magX, float magY, float xMin, float xMax, float yMin, float yMax)
+float calculateHeading(float magX, float magY, float xMin, float xMax, float yMin, float yMax)
 {
   // Normalize the X and Y values to the range -1 to 1
   float normX = 2 * (magX - xMin) / (xMax - xMin) - 1;
@@ -80,9 +80,8 @@ void loop()
     }
 
     // Calculate the heading
-    float heading = calculateHeadingNew(x, y, minX, maxX, minY, maxY);
-
-    // Serial.println("Raw X: " + String(imu.m.x) + "  \tRaw Y: " + String(imu.m.y) + "  \tRaw Z: " + String(imu.m.z) + "  \tX: " + String(x) + "  \tY: " + String(y) + "  \tZ: " + String(z) + "  \tHead: " + String(heading));
+    float heading = calculateHeading(x, y, minX, maxX, minY, maxY);
+    
     Serial.println('$' + String(x) + ' ' + String(y) + ' ' + String(z) + ' ' + String(heading) + ' ' + String(minX) + ' ' + String(maxX) + ' ' + String(minY) + ' ' + String(maxY) + ';');
   }
   delay(100);
