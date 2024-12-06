@@ -16,19 +16,58 @@
 #include <Zumo32U4.h>
 #include <Arduino.h>
 
+struct MagnetometerReading {
+    float x;
+    float y;
+};
+
+
 Zumo32U4IMU imu;
 
-int16_t maxX = -10000, maxY = 0, minX = 0, minY = 10000;
+// Transformation matrix (2x2)
+const float transformationMatrix[2][2] = {
+    {0.00078615, -0.00055139},  // Replace with your computed values
+    {0.00125332, 0.00178694}   // Replace with your computed values
+};
+
+// Calibration parameters
+const float offsetX = -10.0; // Replace with your actual offset for X
+const float offsetY = 5.0;   // Replace with your actual offset for Y
+
+
+MagnetometerReading calibrateMagnetometer(float rawX, float rawY) {
+    // Step 1: Offset correction
+    float centeredX = rawX - offsetX;
+    float centeredY = rawY - offsetY;
+
+    // Step 2: Apply the transformation matrix
+    float calibratedX = transformationMatrix[0][0] * centeredX + transformationMatrix[0][1] * centeredY;
+    float calibratedY = transformationMatrix[1][0] * centeredX + transformationMatrix[1][1] * centeredY;
+
+    Serial.println('$' + String(imu.m.x) + ' ' + String(imu.m.y) + ' ' + String(imu.m.z) + ' ' + String(calibratedX) + ' ' + String(calibratedY) + ';');
+
+    // Return the calibrated values as a struct
+    MagnetometerReading calibratedReading = {calibratedX, calibratedY};
+    return calibratedReading;
+}
+
 
 // Function to convert magnetometer readings to degrees off North
-float calculateHeading(float magX, float magY, float xMin, float xMax, float yMin, float yMax)
+float calculateHeading()
 {
-  // Normalize the X and Y values to the range -1 to 1
-  float normX = 2 * (magX - xMin) / (xMax - xMin) - 1;
-  float normY = 2 * (magY - yMin) / (yMax - yMin) - 1;
+  //Wait for data ready
+    while (!imu.magDataReady())
+  {
+  }
+
+  //Read data
+    imu.readMag();
+  
+// Calibrate the readings
+    MagnetometerReading calibrated = calibrateMagnetometer(imu.m.x, imu.m.y);
 
   // Calculate the heading in radians
-  float heading = atan2(normY, normX);
+  float heading = atan2(calibrated.x, calibrated.y);
 
   // Convert radians to degrees
   float headingDegrees = heading * (180.0 / M_PI);
@@ -53,36 +92,10 @@ void setup()
 
 void loop()
 {
-  if (imu.magDataReady())
-  {
-    imu.readMag();
 
-    // Get magnetometer readings
-    int16_t x = imu.m.x;
-    int16_t y = imu.m.y;
-    int16_t z = imu.m.z;
+calculateHeading();
 
-    if (x > maxX)
-    {
-      maxX = x;
-    }
-    if (y > maxY)
-    {
-      maxY = y;
-    }
-    if (x < minX)
-    {
-      minX = x;
-    }
-    if (y < minY)
-    {
-      minY = y;
-    }
+//    Serial.println('$' + String(imu.m.x) + ' ' + String(imu.m.y) + ' ' + String(imu.m.z) + ' ' + String(heading) + ';');
 
-    // Calculate the heading
-    float heading = calculateHeading(x, y, minX, maxX, minY, maxY);
-    
-    Serial.println('$' + String(x) + ' ' + String(y) + ' ' + String(z) + ' ' + String(heading) + ' ' + String(minX) + ' ' + String(maxX) + ' ' + String(minY) + ' ' + String(maxY) + ';');
-  }
   delay(100);
 }
